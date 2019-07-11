@@ -104,3 +104,45 @@ rough
 bonus = pc.headloss_fric_rect(Q,W,S_Des,Length,nu,rough,False)
 bonus.to(u.m)
 ```
+# Original Design Method
+```python
+# Channel Dimensions
+def WMINHYD_0(Q,H,K,nu,G):
+  return ((3*Q/H)*(K/(2*H*nu*G**2))**(1/3)).to(u.m)
+
+W_Min_Hyd_0 = WMINHYD_0(Q,H_Min,K,nu,G)
+W_Min_0 = np.max(np.array([(W_Human.to(u.m)).magnitude,(W_Min_Hyd_0.to(u.m)).magnitude]))*u.m
+W_Min_0
+n_Channel_0 = np.floor(W_Floc/W_Min_0)
+n_Channel_0
+n_Channel_0 = 6 # Needs to be even.
+W_0 = W_Floc/n_Channel_0
+W_0
+# Baffle Dimensions
+## He
+def HEMAX(K,nu,G,Q,W):
+  return ((K/(2*nu*G**2)*(Q*7/W)**3)**(1/4)).to(u.m)
+
+HeMax = HEMAX(K,nu,G,Q,W_0)  
+HeMax
+nExp = np.ceil(H_Min/HeMax)
+nExp
+He = H_Min/nExp
+He
+nObs = H_Min/He-1
+nObs
+## S
+def S(K,He,G,nu,Q,W):
+  return (K/(2*He*G**2*nu)**(1/3)*(Q/W)).to(u.m)
+S_0 = S(K,He,G,nu,Q,W_0)
+S_0
+S_0<S_Max
+
+Pi_0 = He/S_0
+Pi_0
+3<Pi_0<7
+
+# Check minor loss
+h_L_Act_0 = (nObs+1)*n_Channel*(L/S_0)*K*Q**2/(2*u.g_0*W**2*S_0**2)
+h_L_Act_0.to(u.cm)
+```
