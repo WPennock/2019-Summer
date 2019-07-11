@@ -39,12 +39,11 @@ L
 ```python
 K = 2.56
 def W_MIN_HYD(Q,H,K,nu,G):
-    return ((Q*3/H)*(3*K/(2*H*nu*G**2))**(1/3)).to(u.m)
+    return ((Q*3/H)*(K/(2*H*nu*G**2))**(1/3)).to(u.m)
 W_Min_Hyd = W_MIN_HYD(Q,H_Min,K,nu,G)
 W_Min_Hyd
 W_Min = np.max([(W_Human.to(u.m)).magnitude,W_Min_Hyd.magnitude])*u.m
 W_Min
-W_Min<W_Human
 
 W_Floc = V_Floc/(H_Min*L)
 W_Floc
@@ -78,30 +77,27 @@ S_Max = S_MAX(H_Min,Q,v_Scour,W)
 S_Max
 S_Des<S_Max
 
-Pi_Des = H_Min/S_Des-2
+Pi_Des = H_Min/S_Des
 Pi_Des
-Pi_Des<1
-Pi_Des>5
+3<Pi_Des<7
 
 # 1st Iteration
 S_Des_1 = S_DES(1,n_Channel,L,K,Q,h_L,W)
 S_Des_1
 S_Des_1<S_Max
 
-Pi_Des_1 = (H_Min/S_Des_1-2)/(1+1)
+Pi_Des_1 = (H_Min/S_Des_1)/(1+1)
 Pi_Des_1
-Pi_Des_1<1
-Pi_Des_1>5
+3<Pi_Des_1<7
 
 # 2nd Iteration
 S_Des_2 = S_DES(2,n_Channel,L,K,Q,h_L,W)
 S_Des_2
 S_Des_2<S_Max
 S = S_Max
-Pi_Des_2 = (H_Min/S-2)/(2+1)
+Pi_Des_2 = (H_Min/S)/(2+1)
 Pi_Des_2
-Pi_Des_2<1
-Pi_Des_2>5
+3<Pi_Des_2<7
 # Need two obstacles.
 S
 Pi_Des_2

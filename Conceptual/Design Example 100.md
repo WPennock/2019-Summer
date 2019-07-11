@@ -44,7 +44,7 @@ L_V_Max_New
 ```python
 K = 2.56
 def W_MIN_HYD(Q,H,K,nu,G):
-    return ((Q*3/H)*(3*K/(2*H*nu*G**2))**(1/3)).to(u.m)
+    return ((Q*3/H)*(K/(2*H*nu*G**2))**(1/3)).to(u.m)
 W_Min_Hyd = W_MIN_HYD(Q,H_Min,K,nu,G)
 W_Min_Hyd
 W_Min = np.max([(W_Human.to(u.m)).magnitude,W_Min_Hyd.magnitude])*u.m
@@ -55,7 +55,7 @@ W_Floc
 
 n_Channel = np.floor(W_Floc/W_Min)
 n_Channel
-n_Channel = 4
+n_Channel = 6 # Need even number
 W = W_Floc/n_Channel
 W
 ```
@@ -80,10 +80,9 @@ S_Max = S_MAX(H_Min,Q,v_Scour,W)
 S_Max
 S_Des<S_Max
 
-Pi_Des = H_Min/S_Des-2
+Pi_Des = H_Min/S_Des
 Pi_Des
-Pi_Des<1
-Pi_Des>5
+3<Pi_Des<7
 
 # Need zero obstacles.
 S = S_Des
