@@ -150,7 +150,7 @@ nObs = H_Min/He-1
 
 ## S
 def S(K,He,G,nu,Q,W):
-  return (K/(2*He*G**2*nu)**(1/3)*(Q/W)).to(u.m)
+  return ((K/(2*He*G**2*nu))**(1/3)*(Q/W)).to(u.m)
 S_0 = S(K,He,G,nu,Q,W_0)
 S_0
 

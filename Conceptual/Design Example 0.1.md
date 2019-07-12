@@ -1,11 +1,11 @@
-#Design Example for 100 L/s Vertically-Baffled Hydraulic Flocculator
+#Design Example for Vertically-Baffled Hydraulic Flocculator
 ```python
 from aguaclara.play import *
 ```
 
 ## Set Initial Conditions
 ```python
-Q = 100*u.L/u.s
+Q = 0.1*u.L/u.s
 h_L = 40*u.cm
 H_Min = 2*u.m
 T_Des = 0*u.degC
@@ -33,11 +33,6 @@ L_V_Max
 L_Sed_Max = 6*u.m
 L = np.min(np.array([L_V_Max.magnitude,L_Sed_Max.magnitude]))*u.m
 L
-
-# After computing W
-
-L_V_Max_New = (V_Floc/(2*W_Min*H_Min)).to(u.m)
-L_V_Max_New
 ```
 
 ### Channel Width
@@ -55,7 +50,7 @@ W_Floc
 
 n_Channel = np.floor(W_Floc/W_Min)
 n_Channel
-n_Channel = 6 # Need even number
+n_Channel = 2
 W = W_Floc/n_Channel
 W
 ```
@@ -72,9 +67,11 @@ def S_DES(n_Obs,n_Channel,L,K,Q,h_L,W):
 
 S_Des = S_DES(0,n_Channel,L,K,Q,h_L,W)
 S_Des
+
 v_Scour = 15*u.cm/u.s
 def S_MAX(H,Q,v_Scour,W):
     return np.min([((H/3).to(u.m)).magnitude,((Q/(v_Scour*W)).to(u.m)).magnitude])*u.m
+
 
 S_Max = S_MAX(H_Min,Q,v_Scour,W)
 S_Max
@@ -84,26 +81,45 @@ Pi_Des = H_Min/S_Des
 Pi_Des
 3<Pi_Des<7
 
-# Need zero obstacles.
-S = S_Des
-H_e = Pi_Des*S
-H_e
-# Check minor loss
+# Iterating
 n_Obs = 0
+S_Design = S_Des
+while (H_Min/S_Design)/(n_Obs+1)>7:
+  n_Obs = n_Obs + 1
+  S_Design = S_DES(n_Obs,n_Channel,L,K,Q,h_L,W)
+  if S_Design>S_Max:
+    S_Design = S_Max
+n_Obs
+
+S_Design
+S_Design<=S_Max
+S = S_Design
+Pi = (H_Min/n_Obs)/S
+Pi
+3<=Pi<=7
+H_e = Pi*S
+H_e
+H_Min/n_Obs
+# Check minor loss
 h_L_Act = (n_Obs+1)*n_Channel*(L/S)*K*Q**2/(2*u.g_0*W**2*S**2)
-h_L_Act.to(u.cm)# Check theta
-theta_Act = (n_Channel*L*W*(H_Min+h_L/2))/Q
+h_L_Act.to(u.cm)
+# Check theta
+theta_Act = (n_Channel*L*W*(H_Min+h_L_Act/2))/Q
 theta_Act.to(u.s)
+theta
 # Check major loss
-n_space = np.ceil(L/S_Des)
+n_space = np.ceil(L/S)
 n_space
 Length = n_space*H_Min
-rough = (S_Des*0.3*u.mm+W*0.002*u.mm)/(S_Des+W)
+
+rough = (S*0.3*u.mm+W*0.002*u.mm)/(S+W)
 rough
-bonus = pc.headloss_fric_rect(Q,W,S_Des,Length,nu,rough,False)
+
+bonus = pc.headloss_fric_rect(Q,W,S,Length,nu,rough,False)
 bonus.to(u.m)
+bonus/h_L
 ```
-# Original Design Method
+## Original Design Method
 ```python
 # Channel Dimensions
 def WMINHYD_0(Q,H,K,nu,G):
@@ -112,9 +128,8 @@ def WMINHYD_0(Q,H,K,nu,G):
 W_Min_Hyd_0 = WMINHYD_0(Q,H_Min,K,nu,G)
 W_Min_0 = np.max(np.array([(W_Human.to(u.m)).magnitude,(W_Min_Hyd_0.to(u.m)).magnitude]))*u.m
 W_Min_0
-n_Channel_0 = np.floor(W_Floc/W_Min_0)
+n_Channel_0 = W_Floc/W_Min_0
 n_Channel_0
-n_Channel_0 = 6 # Needs to be even.
 W_0 = W_Floc/n_Channel_0
 W_0
 # Baffle Dimensions
@@ -123,7 +138,6 @@ def HEMAX(K,nu,G,Q,W):
   return ((K/(2*nu*G**2)*(Q*7/W)**3)**(1/4)).to(u.m)
 
 HeMax = HEMAX(K,nu,G,Q,W_0)  
-HeMax
 nExp = np.ceil(H_Min/HeMax)
 nExp
 He = H_Min/nExp
@@ -135,13 +149,17 @@ def S(K,He,G,nu,Q,W):
   return ((K/(2*He*G**2*nu))**(1/3)*(Q/W)).to(u.m)
 S_0 = S(K,He,G,nu,Q,W_0)
 S_0
-S_0<S_Max
 
+## Check S
+S_0<S_Max
+S_0 = S_Max
 Pi_0 = He/S_0
 Pi_0
 3<Pi_0<7
 
 # Check minor loss
 h_L_Act_0 = (nObs+1)*n_Channel*(L/S_0)*K*Q**2/(2*u.g_0*W**2*S_0**2)
+n_Obs
+h_L_Act.to(u.m)
 h_L_Act_0.to(u.cm)
 ```
