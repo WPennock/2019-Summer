@@ -138,10 +138,14 @@ bonus/h_L
 ## Original Design Method
 ```python
 # Channel Dimensions
+K = 2.56
+W_Human = 45*u.cm
+W_Floc = V_Floc/(H_Min*L)
 def WMINHYD_0(Q,H,K,nu,G):
   return ((3*Q/H)*(K/(2*H*nu*G**2))**(1/3)).to(u.m)
 
 W_Min_Hyd_0 = WMINHYD_0(Q,H_Min,K,nu,G)
+W_Min_Hyd_0
 W_Min_0 = np.max(np.array([(W_Human.to(u.m)).magnitude,(W_Min_Hyd_0.to(u.m)).magnitude]))*u.m
 W_Min_0
 n_Channel_0 = W_Floc/W_Min_0
@@ -151,9 +155,10 @@ W_0
 # Baffle Dimensions
 ## He
 def HEMAX(K,nu,G,Q,W):
-  return ((K/(2*nu*G**2)*(Q*7/W)**3)**(1/4)).to(u.m)
+  return ((K/(2*nu*G**2)*(Q*6/W)**3)**(1/4)).to(u.m)
 
 HeMax = HEMAX(K,nu,G,Q,W_0)  
+HeMax
 nExp = np.ceil(H_Min/HeMax)
 nExp
 He = H_Min/nExp
@@ -167,7 +172,10 @@ S_0 = S(K,He,G,nu,Q,W_0)
 S_0
 
 ## Check S
-S_0<S_Max
+S_Max_0 = S_MAX(H_Min,Q,v_Scour,W_0)
+S_0<S_Max_0
+S_Max_0
+He/S_Max_0
 Pi_0 = He/S_0
 Pi_0
 3<Pi_0<7
