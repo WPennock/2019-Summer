@@ -1,41 +1,48 @@
-# Attempt at learning generalized doubling rules
+# Model-Based PBM
 
-## Discrete, same time for collision
-```python
-from aguaclara.play import *
-import aguaclara.research.floc_model as floc
-import pdb
-pop = np.ones(1000000)
-frac = 0.5
-collisions = 11
-for i in range(1,collisions+1):
-    for j in range(0,i):
-        # pdb.set_trace()
-        sizej = int(2**j)
-        popj = np.where(pop==sizej)
-        coll = int(np.floor(frac*0.5*np.size(popj)/2)*2)
-        if coll > 1:
-            pop[popj[0][0:coll]] = 2*sizej
-            pop[popj[0][-coll:]] = 0
-pop = pop[pop!=0]
-bins = np.arange(0,np.log2(np.max(pop)))
-
-plt.hist(pop,bins=bins,align='mid')
-bin_w = (max(bins) - min(bins)) / (len(bins) - 1)
-plt.xticks(np.arange(min(bins)+bin_w/2, max(bins), bin_w), bins)
-plt.xlim(bins[0], bins[-1])
-plt.show()
-
-
-```
 ## Continuous, different collision times
 Take time step, for each bin, calculate collision time and divide time step by
 collision time. Multiply this fraction by current population in bin and add half
 this to next bin.
+## Imports
+```python
+from aguaclara.play import *
+import aguaclara.research.floc_model as floc
+import pdb
+import pickle as pkl
+import matplotlib.animation as anim
+import types
+import html
+from numpngw import AnimatedPNGWriter
+
+plt.rcParams["animation.convert_path"] = "C:\Program Files\ImageMagick-7.0.6-Q16\magick.exe"
+plt.rcParams['text.latex.preamble']=[r"\usepackage{txfonts}"]
+params = {'text.usetex' : True,
+          'font.size' : 10,
+          'font.family' : 'serif',
+          'text.latex.unicode': True,
+          'axes.facecolor': 'white',
+          'axes.labelcolor': 'black',
+          'savefig.facecolor': 'white',
+          'axes.edgecolor': 'black',
+          'savefig.edgecolor': 'black',
+          'xtick.color': 'black',
+          'ytick.color': 'black',
+          'grid.linestyle': 'None',
+          #'lines.markersize': 1
+          }
+plt.rcParams.update(params)
+```
+
+### Load Data
+```python
+PSD = pkl.load(open('PSD.pkl','rb'))*90*u.NTU
+Bins = pkl.load(open('Bins.pkl','rb'))
+```
 
 ```python
-
 # Figuring out bins
+Dose = 2.65*u.mg/u.L
 d_Max = 100*u.um
 d_0 = 7*u.um
 floc.DIM_FRACTAL
@@ -46,7 +53,10 @@ Coll = np.arange(0,NBin+1)
 Coll
 BinD = floc.diam_fractal(floc.DIM_FRACTAL,d_0,Coll)
 BinD
-
+C_0 = 90*u.NTU
+BinC = np.zeros(len(BinD))*u.NTU
+BinC[0] = C_0
+BinC_0 = BinC
 
 def frac_vol_floc_initial(ConcAluminum, ConcClay, coag, material):
     """Return the volume fraction of flocs initially present, accounting for both suspended particles and coagulant precipitates.
@@ -116,39 +126,87 @@ def time_col_laminar(EnergyDis, Temp, ConcAl, ConcClay, coag, material,
 
 time_col_laminar(25*u.mW/u.kg, 22*u.degC, Dose, C_0, floc.PACl, floc.Clay, 10*u.um, 1.25*u.inch, floc.DIM_FRACTAL, 0.1)
 
-
-alpha = 2*Gamma-Gamma**2
-frac_vol_floc_initial(Dose,C_0,floc.PACl,floc.Clay)
+alpha = 2*Gamma-Gamma**2*frac_vol_floc_initial(Dose,C_0,floc.PACl,floc.Clay)
 def t_c(Dose,conc,coag,material,EDR,temp):
     return ((np.pi*6/frac_vol_floc_initial(Dose,C_0,coag,material))**(2/3)/np.pi*(pc.viscosity_kinematic(temp)/EDR)**(1/2)).to(u.s)
 t_c(Dose,C_0,floc.PACl,floc.Clay,25*u.mW/u.kg,22*u.degC)
 
-C_0 = 90*u.NTU
-BinC = np.zeros(len(BinD))*u.NTU
-BinC[0] = C_0
-Dose = 2.65*u.mg/u.L
-t = 0*u.s
-T = 387*u.s
-dt = 0.1*u.s
-(T/dt).to(u.dimensionless)
+t = 0
+T = 387
+dt = 0.1
+(T/dt)
+
+# Set up GIF
+ims = []
+ts = []
+
 while t<=T:
     for i in range(0,len(BinD)-1):
-        tc = t_c(Dose,BinC[i],floc.PACl,floc.Clay,24*u.mW/u.kg,22*u.degC)
+        tc = t_c(Dose,BinC[i],floc.PACl,floc.Clay,24*u.mW/u.kg,22*u.degC).magnitude
         dC = alpha*dt/tc*BinC[i]
         BinC[i] = BinC[i] - dC
         BinC[i+1] = BinC[i+1] + dC
+    if round(t,1)%10 == 0:
+        ims.append(BinC.copy())    
+        ts.append(t)
     t = t + dt
-BinC
-plt.bar(BinD,BinC)
-plt.savefig('PSD_265.png')
-plt.bar(BinD,BinC/BinC[0])
+
+pkl.dump(ims,open("PSD_265.pkl","wb"))
+pkl.dump(ts,open("t_265.pkl","wb"))
+
+# Create Animation function
+plt.clf(),plt.close('all')
+fig, ax = plt.subplots()
+
+# Plot data graphs
+ind = 5
+width1 = np.zeros(len(Bins[ind]))
+width2 = np.zeros(len(Bins[ind]))
+len(Bins[0])
+for j in range(0,len(Bins[ind])-1):
+    width1[j] = Bins[ind][j+1]-Bins[ind][j]
+    width1[6] = 20
+    width2[j] = Bins[ind+6][j+1]-Bins[ind+6][j]
+    width2[6] = 20
+
+ax.bar(Bins[ind],PSD[ind],align='edge',width=width1,color='b',alpha=0.5,label=r"1st 2.65 mg/L")
+ax.bar(Bins[ind+6],PSD[ind+6],align='edge',width=width2,color='r',alpha=0.5,label=r"2nd 2.65 mg/L")
+ax.xlabel(r'')
+ax.xlabel(r'')
+
+# ax.axis([0,100,0,90])
+
+# Plot simulation graphs
+width = np.zeros(len(BinD))
+len(BinD)
+for i in range(0,len(BinD)-1):
+    width[i+1] = -(BinD[i+1] - BinD[i]).magnitude
+    width[0] = -BinD[0].magnitude
+width    
+Graph = ax.bar(BinD,BinC_0,color='g',alpha = 0.5,width=width,align='edge',label='Simulation')
+label = ax.text(0.42,0.95,'t = 0 s',transform=ax.transAxes)
+plt.bar(BinD,BinC_0,color='g',alpha = 0.5,width=width,align='edge')
+
+fig.legend()
+
+def init():
+    for rect in Graph:
+        rect.set_height(0)
+    return Graph
+def anibar(i):
+    for rect, y in zip(Graph,ims[i]):
+        rect.set_height(y.magnitude)
+    label.set_text('t = ' + str(round(ts[i],1)) + ' s')
+    return Graph
+ani = anim.FuncAnimation(fig,anibar,init_func=init,frames=len(ims),blit=True,interval=500,repeat_delay=500)
+# ani.to_html5_video()
+
+# html.HTML(ani.to_html5_video())
+# ani.save('PSD_265.html',writer='imagemagick')
+ani.save('PSD_265.gif',writer='imagemagick' ,extra_args="convert")
+
+# ani.save('PSD_265_v.png',dpi=50,writer=AnimatedPNGWriter(fps=1))
+
 np.savetxt('PSD_265.csv', (BinD.magnitude,BinC.magnitude), delimiter=',')
-# B = np.array([95,100,105,80,300])
-# np.sqrt(np.mean(B))
-# np.mean(np.sqrt(B))
 
-
-# (np.sqrt(8*0.06/.025*u.g_0*(.05)*1*u.mm)).to(u.cm/u.s)
-vs = 0.5*u.ft/u.min
-vs.to(u.mm/u.s)
 ```

@@ -36,7 +36,7 @@ L
 
 # After computing W
 
-L_V_Max_New = (V_Floc/(2*W_Min*H_Min)).to(u.m)
+L_V_Max_New = (V_Floc/(2*W_Min_0*H_Min)).to(u.m)
 L_V_Max_New
 ```
 
@@ -76,7 +76,7 @@ v_Scour = 15*u.cm/u.s
 def S_MAX(H,Q,v_Scour,W):
     return np.min([((H/3).to(u.m)).magnitude,((Q/(v_Scour*W)).to(u.m)).magnitude])*u.m
 
-S_Max = S_MAX(H_Min,Q,v_Scour,W)
+S_Max = S_MAX(H_Min,Q,v_Scour,W_0)
 S_Max
 S_Des<S_Max
 
@@ -106,21 +106,25 @@ bonus.to(u.m)
 # Original Design Method
 ```python
 # Channel Dimensions
+W_Floc = V_Floc/(H_Min*L)
+W_Floc
+K = 2.56
+
 def WMINHYD_0(Q,H,K,nu,G):
-  return ((3*Q/H)*(K/(2*H*nu*G**2))**(1/3)).to(u.m)
+    return ((3*Q/H)*(K/(2*H*nu*G**2))**(1/3)).to(u.m)
 
 W_Min_Hyd_0 = WMINHYD_0(Q,H_Min,K,nu,G)
+W_Min_Hyd_0
 W_Min_0 = np.max(np.array([(W_Human.to(u.m)).magnitude,(W_Min_Hyd_0.to(u.m)).magnitude]))*u.m
 W_Min_0
-n_Channel_0 = np.floor(W_Floc/W_Min_0)
+n_Channel_0 = np.floor(W_Floc/(2*W_Min_0))*2
 n_Channel_0
-n_Channel_0 = 6 # Needs to be even.
 W_0 = W_Floc/n_Channel_0
 W_0
 # Baffle Dimensions
 ## He
 def HEMAX(K,nu,G,Q,W):
-  return ((K/(2*nu*G**2)*(Q*7/W)**3)**(1/4)).to(u.m)
+  return ((K/(2*nu*G**2)*(Q*6/W)**3)**(1/4)).to(u.m)
 
 HeMax = HEMAX(K,nu,G,Q,W_0)  
 HeMax
@@ -139,9 +143,9 @@ S_0<S_Max
 
 Pi_0 = He/S_0
 Pi_0
-3<Pi_0<7
+3<Pi_0<6
 
 # Check minor loss
-h_L_Act_0 = (nObs+1)*n_Channel*(L/S_0)*K*Q**2/(2*u.g_0*W**2*S_0**2)
+h_L_Act_0 = (nObs+1)*n_Channel_0*(L/S_0-1)*K*Q**2/(2*u.g_0*W_0**2*S_0**2)
 h_L_Act_0.to(u.cm)
 ```

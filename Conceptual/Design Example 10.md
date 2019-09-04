@@ -5,7 +5,7 @@ from aguaclara.play import *
 
 ## Set Initial Conditions
 ```python
-Q = 10*u.L/u.s
+Q = 5*u.L/u.s
 h_L = 40*u.cm
 H_Min = 2*u.m
 T_Des = 0*u.degC
@@ -155,17 +155,25 @@ def S(K,He,G,nu,Q,W):
   return ((K/(2*He*G**2*nu))**(1/3)*(Q/W)).to(u.m)
 S_0 = S(K,He,G,nu,Q,W_0)
 S_0
-
-## Check S
-S_0<S_Max
 Pi_0 = He/S_0
 Pi_0
 3<Pi_0<6
 
-# Check scour velocity
+## Check S
+v_Scour = 15*u.cm/u.s
+def S_MAX_0(Q,v_Scour,W):
+    return (Q/(v_Scour*W)).to(u.m)
+S_Max_0 = S_MAX_0(Q,v_Scour,W_0)    
+S_Max_0
+S_0<S_Max_0
+He/S_Max_0
+
 V_Scour = Q/(W_0*S_0)
-V_Scour.to(u.cm/u.s)
+V_Scour.to(u.m/u.s)
 # Check minor loss
-h_L_Act_0 = (nObs+1)*n_Channel_0*(L/S_0)*K*Q**2/(2*u.g_0*W_0**2*S_0**2)
+h_L_Act_0 = (nObs+1)*n_Channel_0*(L/S_Max_0)*K*Q**2/(2*u.g_0*W_0**2*S_Max_0**2)
+
 h_L_Act_0.to(u.cm)
+
+
 ```
