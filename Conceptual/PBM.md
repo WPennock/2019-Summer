@@ -128,9 +128,10 @@ time_col_laminar(25*u.mW/u.kg, 22*u.degC, Dose, C_0, floc.PACl, floc.Clay, 10*u.
 
 alpha = 2*Gamma-Gamma**2*frac_vol_floc_initial(Dose,C_0,floc.PACl,floc.Clay)
 def t_c(Dose,conc,coag,material,EDR,temp):
-    return ((np.pi*6/frac_vol_floc_initial(Dose,C_0,coag,material))**(2/3)/np.pi*(pc.viscosity_kinematic(temp)/EDR)**(1/2)).to(u.s)
+    return ((np.pi/(6*frac_vol_floc_initial(Dose,C_0,coag,material)))**(2/3)/np.pi*(pc.viscosity_kinematic(temp)/EDR)**(1/2)).to(u.s)
 t_c(Dose,C_0,floc.PACl,floc.Clay,25*u.mW/u.kg,22*u.degC)
 
+kf = 0.1
 t = 0
 T = 387
 dt = 0.1
@@ -140,10 +141,23 @@ dt = 0.1
 ims = []
 ts = []
 
+# while t<=T:
+    # dC = np.zeros(len(BinD)-1)
+    # for i in range(0,len(BinD)-1):
+        # tc = t_c(Dose,BinC[i],floc.PACl,floc.Clay,24*u.mW/u.kg,22*u.degC).magnitude
+        # dC[i] = kf*alpha*dt/tc*(BinC[i].to(u.NTU)).magnitude
+    # for i in range(0,len(BinD)-1):
+        # BinC[i] = BinC[i] - dC[i]*u.NTU
+        # BinC[i+1] = BinC[i+1] + dC[i]*u.NTU
+    # if round(t,1)%10 == 0:
+        # ims.append(BinC.copy())    
+        # ts.append(t)
+    # t = t + dt
+
 while t<=T:
     for i in range(0,len(BinD)-1):
         tc = t_c(Dose,BinC[i],floc.PACl,floc.Clay,24*u.mW/u.kg,22*u.degC).magnitude
-        dC = alpha*dt/tc*BinC[i]
+        dC = kf*alpha*dt/tc*BinC[i]
         BinC[i] = BinC[i] - dC
         BinC[i+1] = BinC[i+1] + dC
     if round(t,1)%10 == 0:
@@ -168,11 +182,16 @@ for j in range(0,len(Bins[ind])-1):
     width1[6] = 20
     width2[j] = Bins[ind+6][j+1]-Bins[ind+6][j]
     width2[6] = 20
+# PSD1 = PSD[ind]/(width1*u.um*C_0)
+PSD1 = PSD[ind]/(C_0)
+# PSD2 = PSD[ind+6]/(width2*u.um*C_0)
+PSD2 = PSD[ind+6]/(C_0)
 
-ax.bar(Bins[ind],PSD[ind],align='edge',width=width1,color='b',alpha=0.5,label=r"1st 2.65 mg/L")
-ax.bar(Bins[ind+6],PSD[ind+6],align='edge',width=width2,color='r',alpha=0.5,label=r"2nd 2.65 mg/L")
-ax.xlabel(r'')
-ax.xlabel(r'')
+ax.bar(Bins[ind],PSD1,align='edge',width=width1,color='b',alpha=0.5,label=r"1st 2.65 mg/L")
+ax.bar(Bins[ind+6],PSD2,align='edge',width=width2,color='r',alpha=0.5,label=r"2nd 2.65 mg/L")
+ax.set_xlabel(r'Particle Diameter ($\mathrm{\mu m}$)')
+# ax.set_ylabel(r'$\frac{C_\mathrm{P}}{C_\mathrm{P_0}\mathrm{d}d_\mathrm{P}}$')
+ax.set_ylabel(r'$\frac{C_\mathrm{P}}{C_\mathrm{P_0}}$')
 
 # ax.axis([0,100,0,90])
 
@@ -183,18 +202,26 @@ for i in range(0,len(BinD)-1):
     width[i+1] = -(BinD[i+1] - BinD[i]).magnitude
     width[0] = -BinD[0].magnitude
 width    
-Graph = ax.bar(BinD,BinC_0,color='g',alpha = 0.5,width=width,align='edge',label='Simulation')
-label = ax.text(0.42,0.95,'t = 0 s',transform=ax.transAxes)
-plt.bar(BinD,BinC_0,color='g',alpha = 0.5,width=width,align='edge')
+PSDS = []
 
-fig.legend()
+for i in range(0,len(ims)):
+    # PSDS.append(ims[i].copy()/(-width*u.um*C_0))
+    PSDS.append(ims[i].copy()/(C_0))
+
+# PSDS_0 = BinC_0/(-width*u.um*C_0)
+PSDS_0 = BinC_0/(C_0)
+Graph = ax.bar(BinD,PSDS_0,color='g',alpha = 0.5,width=width,align='edge',label='Simulation')
+label = ax.text(0.42,0.95,'t = 0 s',transform=ax.transAxes)
+# plt.bar(BinD,BinC_0,color='g',alpha = 0.5,width=width,align='edge')
+
+ax.legend()
 
 def init():
     for rect in Graph:
         rect.set_height(0)
     return Graph
 def anibar(i):
-    for rect, y in zip(Graph,ims[i]):
+    for rect, y in zip(Graph,PSDS[i]):
         rect.set_height(y.magnitude)
     label.set_text('t = ' + str(round(ts[i],1)) + ' s')
     return Graph
