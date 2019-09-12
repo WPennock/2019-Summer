@@ -1,1 +1,3 @@
-NTU = 100/68*u.mg/u.L = _ = ntu
+# Concentration
+[concentration] = [mass] / [length] ** 3
+NTU = 100 / 68 * mg / L = _ = ntu
