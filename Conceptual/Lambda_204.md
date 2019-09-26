@@ -44,7 +44,33 @@ for i in range(0,len(PSD)):
 
 CDF = CDF*u.NTU        
 
+
 Bins = pkl.load(open('Bins.pkl','rb'))
+
+Temps = pkl.load(open('Temps.pkl','rb'))*u.degC
+Tempsp = []
+for i in range(0,len(Temps)):
+    Tempsp.append(np.append(Temps[i]*u.degC,Temps[i][-1]*u.degC))
+
+Doses = pkl.load(open('Doses.pkl','rb'))*u.mg/u.L
+Dosesp = []
+for i in range(0,len(Doses)):
+    Dosesp.append(np.append(Doses[i]*u.mg/u.L,Doses[i][-1]*u.mg/u.L))
+
+BinsDens = np.zeros([12,7])
+
+for i in range(0,len(BinsDens)):
+    for j in range(0,len(BinsDens[i])):
+        BinsDens[i][j] = dens_floc(Dosesp[i][j]*u.mg/u.L,C_0,Dim,Bins[i][j]*u.um,floc.PACl,floc.Clay,Tempsp[i][j]*u.degC).magnitude
+
+nPP = nP(CDF,BinsDens*u.kg/u.m**3,Bins*u.um)
+nPC = np.zeros(nPP.shape)
+
+for i in range(0,len(nPC)):
+    for j in range(0,len(nPC[i])):
+        nPC[i][j] = np.sum(nPP[i][0:j+1].magnitude)
+
+nPC[0]/nP_0    
 ```
 
 ## Define Functions
@@ -99,9 +125,11 @@ def gamma_coag(ConcClay, ConcAluminum, coag, material,
             # ).to(u.s)
 
 
-def dC(k,Diam,conc,Density,EDR,temp,alpha,dt):
-    return (k*np.pi*alpha*Density*((6*frac_vol_clay(conc,Density))/np.pi)**(5/3)*(EDR/pc.viscosity_kinematic(temp))**(1/2)*dt).to(u.NTU)
+def dnP(k,nP,Diam,EDR,temp,alpha,dt):
+    return (k*np.pi*alpha*nP**(5/3)*Diam**2*(EDR/pc.viscosity_kinematic(temp))**(1/2)*dt).to(1/u.m**3)
 
+def nP(conc,Density,Diameter):
+    return(6*conc.to(u.kg/u.m**3)/(np.pi*Diameter.to(u.m)**3*Density.to(u.kg/u.m**3))).to(u.m**-3)
 
 # def t_c(conc,Density,EDR,temp):
     # return ((np.pi/(6*frac_vol_clay(conc,Density)))**(2/3)/np.pi*(pc.viscosity_kinematic(temp)/EDR)**(1/2)).to(u.s)
@@ -118,8 +146,9 @@ def dC(k,Diam,conc,Density,EDR,temp,alpha,dt):
     # ims.append(BinC.magnitude.copy())    
     # ts.append(t)
     # t = t + dt
-def Integrated(t,material,k,EDR,temp,alpha):
-    return (((2/3*((EDR/pc.viscosity_kinematic(temp))**(1/2)).to(1/u.s)*t*k*alpha*np.pi)*(6/(np.pi*material.Density))**(2/3)+C_0**(-2/3))**(-3/2)).to(u.NTU)
+def IntegratednP(t,material,k,EDR,temp,alpha,nP0):
+    return (((2/3*((EDR/pc.viscosity_kinematic(temp))**(1/2)).to(1/u.s)*t*k*alpha*np.pi*material.Diameter**2)+nP0**(-2/3))**(-3/2)).to(1/u.m**3)
+IntegratednP(T,floc.Clay,0.1,EDR,Temp,alpha,)
 ```
 
 ## Simulation
@@ -127,10 +156,13 @@ def Integrated(t,material,k,EDR,temp,alpha):
 # Set up simulation
 
 # Conditions
-Dose = 0.41*u.mg/u.L
-EDR = 25.9*u.mW/u.kg
-Temp = 22.7*u.degC
+ind = 4
+Dose = 2.04*u.mg/u.L
+EDR = 22.8*u.mW/u.kg
+Temp = 23.2*u.degC
 C_0 = 90*u.NTU
+nP_0 = floc.particle_number_concentration(C_0,floc.Clay)
+
 Gamma = gamma_coag(C_0,Dose,floc.PACl,floc.Clay,1.25*u.inch,floc.RATIO_HEIGHT_DIAM)
 Gamma
 alpha = 2*Gamma-Gamma**2
@@ -147,52 +179,45 @@ Coll = np.arange(0,NBin+1)
 Coll
 BinD = floc.diam_fractal(Dim,d_0,Coll)
 BinD
-BinC = np.zeros(len(BinD))*u.NTU
-BinC[0] = C_0
-BinC_0 = BinC
+BinnP = np.zeros(len(BinD))/u.m**3
+BinnP[0] = nP_0
+BinnP_0 = BinnP
 BinD
 DensD = dens_floc(Dose,C_0,Dim,BinD,floc.PACl,floc.Clay,Temp)
 DensD
-(1/4)**(5-1)
-(1/4)**(1-5)
-(4/1)**(5-1)
-(4/1)**(1-5)
+
 # Set up time steps
 t = 0
-T = 384
+T = 397
 dt = 0.1
 (T/dt)
+# kf = 1
 # kfit = pkl.load(open("k_041.pkl",'rb'))
 # kf = 5*np.exp(-BinD[:-1]/BinD[0])
-kf = (BinD[:-1]/BinD[0])**(1-Dim)
+# kf = 2**(-Coll[:-1]*(1-1/Dim)) # Theory
+kf = 10*(BinD[:-1]/BinD[0])**(Dim-1)
 kf
 
 # Clear previous results
 ims = []
 ts = []
-dC4 = []
 
 while t<=T:
-    d_C = dC(kf,BinD[:-1],BinC[:-1],DensD[:-1],EDR,Temp,alpha,dt*u.s)
+    d_nP = dnP(kf,BinnP[:-1],BinD[:-1],EDR,Temp,alpha,dt*u.s)
     for i in range(0,len(BinD)-1):
-        BinC[i] = BinC[i] - d_C[i]
-        BinC[i+1] = BinC[i+1] + d_C[i]
+        BinnP[i] = BinnP[i] - d_nP[i]
+        BinnP[i+1] = BinnP[i+1] + d_nP[i]
     # if round(t,1)%10 == 0:
-    ims.append(BinC.magnitude.copy())    
+    ims.append(BinnP.magnitude.copy())    
     ts.append(t)
-    # dC4.append(d_C[4].magnitude.copy())
     t = t + dt
 
 # Quick Quality Check
 len(ims)
 ims[0]
 ims[-1]
-dC4
-
-C4 = np.array(ims)[:,4]
-plt.semilogy(C4)
-plt.semilogy(dC4)
 ```
+
 ## Examining behavior of primary particles
 ```python
 prim = np.zeros(len(ims))
@@ -215,8 +240,8 @@ plt.show()
 ```python
 kf
 
-pkl.dump(ims,open("PSD_041.pkl","wb"))
-pkl.dump(ts,open("t_041.pkl","wb"))
+pkl.dump(ims,open("PSD_204.pkl","wb"))
+pkl.dump(ts,open("t_204.pkl","wb"))
 ```
 
 ## Trim Data
@@ -239,14 +264,14 @@ for i in range(0,len(ims)):
     elif i == len(ims)-1:    
         ims10.append(ims[i].copy())
         t10.append(ts[i])
-ims10 = ims10*u.NTU
+ims10 = ims10*u.m**(-3)
 
 SIM = np.zeros(ims10.shape)
 
 for i in range(0,len(ims10)):
     for j in range(0,len(ims10[i])):
         SIM[i][j] = np.sum(ims10[i][0:j+1].magnitude)
-SIM = SIM*u.NTU
+SIM = SIM*u.m**(-3)
 ```
 
 ## Animation
@@ -255,38 +280,40 @@ plt.clf(),plt.close('all')
 fig, ax = plt.subplots()
 
 # Plot data graphs
-ind = 1
-
-CDF1 = CDF[ind]/(C_0)
-CDF2 = CDF[ind+6]/(C_0)
-
-ax.plot(Bins[ind][:-1],CDF1[:-1],'b+',label=r"1st 0.41 mg/L")
-ax.plot(Bins[ind+6][:-1],CDF2[:-1],'r+',label=r"2nd 0.41 mg/L")
+nPC1 = nPC[ind]/(nP_0)
+nPC2 = nPC[ind+6]/(nP_0)
+len(Bins[ind])
+len(nPC1)
+ax.plot(Bins[ind][:-1],nPC1[:-1],'b+',label=r"1st 2.04 mg/L")
+ax.plot(Bins[ind+6][:-1],nPC2[:-1],'r+',label=r"2nd 2.04 mg/L")
 ax.set_xlabel(r'Particle Diameter ($\mathrm{\mu m}$)')
-ax.set_ylabel(r'$\sum\frac{C_\mathrm{P}}{C_\mathrm{P_0}}$')
+ax.set_ylabel(r'$\sum\frac{n_\mathrm{P}}{n_\mathrm{P_0}}$')
 
 # Plot simulation graphs
 
-CDFS = []
+nPCS = []
 for i in range(0,len(SIM)):
-    CDFS.append(SIM[i].copy()/(C_0.magnitude))
-
+    nPCS.append(SIM[i].copy()/(nP_0))
+nPCS
 splines = []
-for i in range(0,len(CDFS)):
-    splines.append(interp1d(BinD[:-1], CDFS[i][:-1], kind='cubic'))    
+for i in range(0,len(nPCS)):
+    splines.append(interp1d(BinD[:-1], nPCS[i][:-1], kind='cubic'))    
 
-CDF_0 = np.ones(len(BinD))*90*u.NTU
-CDFS_0 = CDF_0/(C_0)
-spline_0 = interp1d(BinD,CDFS_0,kind='cubic')
+nPC_0 = np.ones(len(BinD))*nP_0
+nPCS_0 = nPC_0/(nP_0)
+
+spline_0 = interp1d(BinD,nPCS_0,kind='cubic')
 
 Diams = np.arange(7,BinD[-2].magnitude,0.1)*u.um
 
 # Graph, = ax.plot(Diams,spline_0(Diams),'g-',label='Simulation, k = '+str(round(kf,3)))
-Graph, = ax.plot(Diams,spline_0(Diams),'g-',label=r'Simulation, $k = \left(\frac{d}{d_0}\right)^{1-D}$')
+Graph, = ax.plot(Diams,spline_0(Diams),'g-',label=r'Simulation, k = 1')
+ # \left(\frac{d}{d_0}\right)^{1-D}$
 
 ax.legend(loc=4)
 label = ax.text(0.42,0.96,'t = 0 s',transform=ax.transAxes)
 
+ax.set_ylim(1e-4,1e-3)
 ax.set_yscale('log')
 
 def init():
@@ -299,7 +326,7 @@ def aniline(i):
     return Graph,
 ani = anim.FuncAnimation(fig,aniline,init_func=init,frames=len(CDFS),blit=True,interval=750,repeat_delay=3000,repeat=True)
 
-ani.save('CDF_041_dim.gif',writer='imagemagick' ,extra_args="convert") # run 3 times
+ani.save('Lambda_204_fractal.gif',writer='imagemagick' ,extra_args="convert") # run 3 times
 ```
 
 ## Miscellaneous Calculations
