@@ -9,6 +9,7 @@ Q = 5*u.L/u.s
 h_L = 40*u.cm
 H_Min = 2*u.m
 T_Des = 0*u.degC
+T_Des = T_Des.to(u.degK)
 Gtheta = 3.7e4
 ```
 
@@ -30,37 +31,39 @@ V_Floc
 W_Human = 45*u.cm
 L_V_Max = (V_Floc/(2*W_Human*H_Min)).to(u.m)
 L_V_Max
-L_Sed_Max = 7*u.m
+L_Sed_Max = 6*u.m
 L = np.min(np.array([L_V_Max.magnitude,L_Sed_Max.magnitude]))*u.m
 L
 ```
+
 ### Channel Width
 ```python
-# K = 2.56
-# def W_MIN_HYD(Q,H,K,nu,G):
-#     return ((Q*3/H)*(K/(2*H*nu*G**2))**(1/3)).to(u.m)
-# W_Min_Hyd = W_MIN_HYD(Q,H_Min,K,nu,G)
-# W_Min_Hyd
-# W_Min = np.max([(W_Human.to(u.m)).magnitude,W_Min_Hyd.magnitude])*u.m
-# W_Min
-#
-# W_Floc = V_Floc/(H_Min*L)
-# W_Floc
-#
-# n_Channel = np.floor(W_Floc/W_Min)
-# n_Channel
-#
-# W = W_Floc/n_Channel
-# W
-# ```
-# ### Channel Depth
-# ```python
-# D_Min = H_Min + h_L
-# D_Min
-# ```
-#
-# ## Baffle Module Dimensions
-# ```python
+K = 2.56
+def W_MIN_HYD(Q,H,K,nu,G):
+    return ((Q*3/H)*(K/(2*H*nu*G**2))**(1/3)).to(u.m)
+W_Min_Hyd = W_MIN_HYD(Q,H_Min,K,nu,G)
+W_Min_Hyd
+W_Min = np.max([(W_Human.to(u.m)).magnitude,W_Min_Hyd.magnitude])*u.m
+W_Min
+
+W_Floc = V_Floc/(H_Min*L)
+W_Floc
+
+n_Channel = np.floor(W_Floc/W_Min)
+n_Channel
+
+W = W_Floc/n_Channel
+W
+```
+### Channel Depth
+```python
+H_Free = 10*u.cm
+D_Min = H_Min + h_L + H_Free
+D_Min
+```
+
+## Baffle Module Dimensions
+```python
 # def S_DES(n_Obs,n_Channel,L,K,Q,h_L,W):
 #     return (np.cbrt((((n_Obs+1)*n_Channel*L*K*Q**2)/(2*u.g_0*h_L*W**2)).to(u.m**3)))*u.m
 #
@@ -140,7 +143,6 @@ L
 K = 2.56
 W_Human = 45*u.cm
 W_Floc = V_Floc/(H_Min*L)
-W_Floc
 def WMINHYD_0(Q,H,K,nu,G):
   return ((3*Q/H)*(K/(2*H*nu*G**2))**(1/3)).to(u.m)
 
@@ -179,11 +181,6 @@ He/S_Max_0
 Pi_0 = He/S_0
 Pi_0
 3<Pi_0<7
-(Q/(W_0*S_0)).to(u.m/u.s)
-
-# Obstacle Thickness
-T_Obs = 0.62*S_0
-T_Obs
 
 # Baffle Heights
 H_Bot = H_Min-S_0
@@ -196,4 +193,33 @@ h_L_Act_0 = (nObs+1)*n_Channel*(L/S_0)*K*Q**2/(2*u.g_0*W**2*S_0**2)
 h_L_Act_0.to(u.cm)
 H_Min/n_Obs
 n_Obs
+```
+## Haarhoff HBF Calculation
+```python
+(nu/u.g_0*G**2*theta).to(u.m)
+K # Haarhoff used 3.2, but will use 2.56 for comparison
+p = 1.0 # slot width ratio
+# w = 0.1*u.m # thickness of baffles
+w = 1*u.mm # assume using polycarbonate sheets
+r = 1 # depth ratio (1-3)
+q = 4 # overlap ratio (4-5)
+
+from scipy.optimize import fsolve
+def equations(p):
+    B, N = p
+    return [(N-1)/(r*(B)**2)**2-(((2*nu*G**2*theta)/(K*Q**2)).to(u.m**-4)).magnitude, ((Q*theta).to(u.m**3)).magnitude-N*r*(B)**3*(q+2*p)+(N-1)*r*(B)**2*p*w]
+    # return ((N-1)/(r*(B)**2)**2-(2*nu*G**2*theta)/(K*Q**2), Q*theta-N*r*(B)**3*(q+2*p)+(N-1)*r*(B)**2*p*w)
+
+B, N = fsolve(equations,(1,5))
+
+# Iterative
+N = np.arange(2,20,1)
+B = (theta*np.sqrt(2*nu*G**2*theta/(K*(N-1)))-(N-1)*p*w)/(N*q+2*p)
+B
+B*(q+2*p)
+B*r
+
+N*r*B**3*(q+2*p)+(N-1)*r*B**2*p*w
+
+V_Floc
 ```

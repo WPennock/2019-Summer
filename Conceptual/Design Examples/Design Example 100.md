@@ -9,6 +9,7 @@ Q = 100*u.L/u.s
 h_L = 40*u.cm
 H_Min = 2*u.m
 T_Des = 0*u.degC
+T_Des = T_Des.to(u.degK)
 Gtheta = 3.7e4
 ```
 
@@ -61,7 +62,8 @@ L
 ```
 ### Channel Depth
 ```python
-D_Min = H_Min + h_L
+h_Free = 10*u.cm
+D_Min = H_Min + h_L + h_Free
 D_Min
 ```
 
