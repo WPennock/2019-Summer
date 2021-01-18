@@ -15,7 +15,8 @@ Gtheta = 3.7e4
 
 ## Find General Design Parameters
 ```python
-nu = pc.viscosity_kinematic(T_Des)
+pc.viscosity_kinematic_water(20*u.degC)
+nu = pc.viscosity_kinematic_water(T_Des)
 G = (u.g_0*h_L/(nu*Gtheta)).to(1/u.s)
 G
 theta = Gtheta/G
@@ -154,6 +155,8 @@ n_Channel_0 = W_Floc/W_Min_0
 n_Channel_0
 W_0 = W_Floc/n_Channel_0
 W_0
+
+L*W_0*n_Channel_0
 # Baffle Dimensions
 ## He
 def HEMAX(K,nu,G,Q,W):
@@ -194,32 +197,36 @@ h_L_Act_0.to(u.cm)
 H_Min/n_Obs
 n_Obs
 ```
+
+
 ## Haarhoff HBF Calculation
 ```python
-(nu/u.g_0*G**2*theta).to(u.m)
-K # Haarhoff used 3.2, but will use 2.56 for comparison
-p = 1.0 # slot width ratio
-# w = 0.1*u.m # thickness of baffles
-w = 1*u.mm # assume using polycarbonate sheets
-r = 1 # depth ratio (1-3)
-q = 4 # overlap ratio (4-5)
-
-from scipy.optimize import fsolve
-def equations(p):
-    B, N = p
-    return [(N-1)/(r*(B)**2)**2-(((2*nu*G**2*theta)/(K*Q**2)).to(u.m**-4)).magnitude, ((Q*theta).to(u.m**3)).magnitude-N*r*(B)**3*(q+2*p)+(N-1)*r*(B)**2*p*w]
-    # return ((N-1)/(r*(B)**2)**2-(2*nu*G**2*theta)/(K*Q**2), Q*theta-N*r*(B)**3*(q+2*p)+(N-1)*r*(B)**2*p*w)
-
-B, N = fsolve(equations,(1,5))
-
-# Iterative
-N = np.arange(2,20,1)
-B = (theta*np.sqrt(2*nu*G**2*theta/(K*(N-1)))-(N-1)*p*w)/(N*q+2*p)
-B
-B*(q+2*p)
-B*r
-
-N*r*B**3*(q+2*p)+(N-1)*r*B**2*p*w
-
-V_Floc
+# (nu/u.g_0*G**2*theta).to(u.m) K # Haarhoff used 3.2, but will use 2.56 for comparison p = 1.0 # slot width ratio # w = 0.1*u.m # thickness of baffles w = 100*u.mm # assume using polycarbonate sheets r = 1 # depth ratio (1-3) q = 4 # overlap ratio (4-5) from scipy.optimize import fsolve def equations(p): B, N = p return [(N-1)/(r*(B*u.m)**2)**2-(((2*nu*G**2*theta)/(K*Q**2)).to(u.m**-4)).magnitude, ((Q*theta).to(u.m**3)).magnitude-N*r*(B*u.m)**3*(q+2*p)+(N-1)*r*(B*u.m)**2*p*w] # return ((N-1)/(r*(B)**2)**2-(2*nu*G**2*theta)/(K*Q**2), Q*theta-N*r*(B)**3*(q+2*p)+(N-1)*r*(B)**2*p*w) B, N = fsolve(equations,[1,5])
+# # Iterative
+# G
+# theta
+# N = np.arange(2,50,1)
+# B = (theta*np.sqrt(2*nu*G**2*theta/(K*(N-1)))-(N-1)*p*w)/(N*q+2*p)
+# B
+# B*(q+2*p)
+# B*r
+#
+# N*r*B**3*(q+2*p)+(N-1)*r*B**2*p*w
+#
+#
+#
+# V_Floc
+#
+# def power_floc_shaft(Q, G, t, temp):
+#     return (G**2 * Q * t * pc.viscosity_dynamic_water(temp)).to(u.kW)
+#
+#
+# Power = power_floc_shaft(100*u.L/u.s,G,theta,T_Des)
+# Energy = (1*u.year*Power).to(u.kWh)
+# Energy
+# rate = 0.1648*u.USD/u.kWh
+# rate*Energy
+#
+# G
+# G*theta
 ```
